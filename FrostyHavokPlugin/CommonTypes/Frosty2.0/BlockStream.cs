@@ -1,0 +1,178 @@
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Security.Cryptography;
+using Frosty.Sdk.Utils;
+
+namespace Frosty.Sdk.IO;
+
+public class BlockStream : DataStream
+{
+    private readonly Block<byte> m_block;
+    private readonly bool m_leaveOpen;
+
+    public BlockStream(int inSize)
+    {
+        m_block = new Block<byte>(inSize);
+        m_stream = m_block.ToStream();
+    }
+
+    public BlockStream(Block<byte> inBuffer, bool inLeaveOpen = false)
+    {
+        m_block = inBuffer;
+        m_stream = m_block.ToStream();
+        m_leaveOpen = inLeaveOpen;
+    }
+
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        ResizeStream(Position + buffer.Length);
+        base.Write(buffer);
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        ResizeStream(Position + count);
+        base.Write(buffer, offset, count);
+    }
+
+    public override void WriteByte(byte value)
+    {
+        ResizeStream(Position + sizeof(byte));
+        base.WriteByte(value);
+    }
+
+    public unsafe void CopyTo(BlockStream destination, int bufferSize)
+    {
+        destination.ResizeStream(destination.Position + bufferSize);
+
+        using (Block<byte> a = new(m_block.BasePtr + Position, bufferSize))
+        using (Block<byte> b = new(destination.m_block.BasePtr + destination.Position, bufferSize))
+        {
+            a.MarkMemoryAsFragile();
+            b.MarkMemoryAsFragile();
+            a.CopyTo(b);
+        }
+
+        destination.Position += bufferSize;
+        Position += bufferSize;
+    }
+
+    public override unsafe string ReadNullTerminatedString()
+    {
+        string retVal = new((sbyte*)(m_block.Ptr + Position));
+        Position += retVal.Length + 1;
+        return retVal;
+    }
+
+    /// <summary>
+    /// Loads part of a file into memory.
+    /// </summary>
+    /// <param name="inPath">The path of the file.</param>
+    /// <param name="inOffset">The offset of the data to load.</param>
+    /// <param name="inSize">The size of the data to load</param>
+    /// <returns>A <see cref="BlockStream"/> that has the data loaded.</returns>
+    public static BlockStream FromFile(string inPath, long inOffset, int inSize)
+    {
+        using (FileStream stream = new(inPath, FileMode.Open, FileAccess.Read))
+        {
+            stream.Position = inOffset;
+
+            BlockStream retVal = new(inSize);
+
+            stream.ReadExactly(retVal.m_block);
+            return retVal;
+        }
+    }
+
+    /// <summary>
+    /// <see cref="Aes"/> decrypt this <see cref="BlockStream"/>.
+    /// </summary>
+    /// <param name="inKey">The key to use for the decryption.</param>
+    /// <param name="inPaddingMode">The <see cref="PaddingMode"/> to use for the decryption.</param>
+    public void Decrypt(byte[] inKey, PaddingMode inPaddingMode)
+    {
+        using (Aes aes = Aes.Create())
+        {
+            aes.Key = inKey;
+            Span<byte> span = m_block.ToSpan((int)Position);
+            aes.DecryptCbc(span, inKey, span, inPaddingMode);
+        }
+    }
+
+    /// <summary>
+    /// <see cref="Aes"/> decrypt part of this <see cref="BlockStream"/>.
+    /// </summary>
+    /// <param name="inKey">The key to use for the decryption.</param>
+    /// <param name="inSize">The size of the data to decrypt.</param>
+    /// <param name="inPaddingMode">The <see cref="PaddingMode"/> to use for the decryption.</param>
+    public void Decrypt(byte[] inKey, int inSize, PaddingMode inPaddingMode)
+    {
+        using (Aes aes = Aes.Create())
+        {
+            aes.Key = inKey;
+            Span<byte> span = m_block.ToSpan((int)Position, inSize);
+            aes.DecryptCbc(span, inKey, span, inPaddingMode);
+        }
+    }
+
+    public override void Dispose()
+    {
+        if (m_leaveOpen && Position > Length)
+        {
+            Span<byte> padding = new byte[Position - Length];
+            Position = Length;
+            m_stream.Write(padding);
+        }
+        if (m_leaveOpen && m_block.Size != Length)
+        {
+            // resize the block if needed
+            m_block.Resize((int)Length);
+        }
+
+        base.Dispose();
+        if (!m_leaveOpen)
+        {
+            m_block.Dispose();
+        }
+        GC.SuppressFinalize(this);
+    }
+
+    private static bool CheckExtraObfuscation(Stream inStream, out int keySize)
+    {
+        keySize = 0;
+
+        // read signature
+        inStream.Seek(-36, SeekOrigin.End);
+        Span<byte> signature = stackalloc byte[36];
+        inStream.ReadExactly(signature);
+        inStream.Position = 0;
+
+        // check signature
+        const string magic = "@e!adnXd$^!rfOsrDyIrI!xVgHeA!6Vc";
+        for (int i = 0; i < 32; i++)
+        {
+            if (signature[i + 4] != magic[i])
+            {
+                return false;
+            }
+        }
+
+        // get key size
+        keySize = signature[3] << 24 | signature[2] << 16 | signature[1] << 8 | signature[0] << 0;
+        return true;
+    }
+    private void ResizeStream(long inDesiredMinLength)
+    {
+        if (inDesiredMinLength > m_block.Size)
+        {
+            long position = Position;
+            int neededLength = (int)Math.Max(inDesiredMinLength, Environment.SystemPageSize + position);
+            neededLength = neededLength + 15 & ~15;
+            m_block.Resize(neededLength);
+            m_stream = m_block.ToStream();
+            m_stream.SetLength(inDesiredMinLength);
+            m_stream.Position = position;
+        }
+    }
+}
