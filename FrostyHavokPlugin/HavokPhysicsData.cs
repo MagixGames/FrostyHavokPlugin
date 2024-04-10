@@ -211,5 +211,9 @@ public class HavokPhysicsData
         BinaryPrimitives.WriteInt32LittleEndian(inResMeta.Slice(12, 4), fixupTable.Size + 8);
 
         inStream.WriteRelocTable();
+
+        // set packfile types
+        inResMeta[2] = 0;
+        inResMeta[3] = 1;
     }
 }
