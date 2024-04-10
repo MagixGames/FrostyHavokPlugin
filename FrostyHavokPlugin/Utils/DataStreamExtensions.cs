@@ -119,4 +119,20 @@ public static class DataStreamExtensions
         stream.WriteVector3(value.Min);
         stream.WriteVector3(value.Max);
     }
+    public static byte[] ReadEntireStream(this DataStream stream)
+    {
+        stream.StepIn(0);
+        byte[] result = new byte[stream.Length];
+        stream.Read(result, 0, result.Length);
+        stream.StepOut();
+        return result;
+    }
+
+    public static DataStream CreateSubStream(this DataStream stream, long pos, int size)
+    {
+        stream.StepIn(pos);
+        byte[] buff = stream.ReadBytes(size);
+        stream.StepOut();
+        return new DataStream(new MemoryStream(buff));
+    }
 }

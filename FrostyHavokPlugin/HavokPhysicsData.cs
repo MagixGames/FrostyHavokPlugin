@@ -1,7 +1,6 @@
 using System.Buffers.Binary;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
-using Frosty.Sdk.Resources;
 using Frosty.Sdk.Utils;
 using FrostyHavokPlugin.CommonTypes;
 using FrostyHavokPlugin.HavokExtensions;
@@ -12,7 +11,7 @@ using OpenTK.Mathematics;
 
 namespace FrostyHavokPlugin;
 
-public class HavokPhysicsData : Resource
+public class HavokPhysicsData
 {
     public int PartCount { get; private set; }
     public List<Vector3> PartTranslations { get; private set; } = new();
