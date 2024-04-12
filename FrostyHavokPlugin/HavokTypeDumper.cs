@@ -125,7 +125,8 @@ public class HavokTypeDumper
         {
             if (pParent != 0)
             {
-                Debug.Assert(Classes.TryGetValue(pParent, out hkClass? parent));
+                hkClass? parent = new hkClass();
+                Debug.Assert(Classes.TryGetValue(pParent, out parent));
                 Parent = parent.Name;
             }
 
@@ -341,13 +342,15 @@ public class HavokTypeDumper
             Name = "_" + Name;
             if (pClass != 0)
             {
-                Debug.Assert(hkClass.Classes.TryGetValue(pClass, out hkClass? c));
+                hkClass? c = new();
+                Debug.Assert(hkClass.Classes.TryGetValue(pClass, out c));
                 Class = c.Name;
             }
 
             if (pEnum != 0)
             {
-                Debug.Assert(hkClassEnum.Enums.TryGetValue(pEnum, out hkClassEnum? e));
+                hkClassEnum? e = new hkClassEnum();
+                Debug.Assert(hkClassEnum.Enums.TryGetValue(pEnum, out e));
                 Enum = e.Name;
             }
 

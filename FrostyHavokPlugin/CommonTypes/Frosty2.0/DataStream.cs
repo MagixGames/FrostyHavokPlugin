@@ -6,15 +6,13 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Frosty.Sdk.Utils;
-using FrostySdk;
 
 namespace Frosty.Sdk.IO;
 
-
 public enum Endian
 {
-    Little,
-    Big
+    Big,
+    Little
 }
 public unsafe class DataStream : IDisposable
 {
@@ -31,7 +29,6 @@ public unsafe class DataStream : IDisposable
     protected Stream m_stream;
     private readonly StringBuilder m_stringBuilder;
     private readonly Stack<long> m_steps = new();
-    private readonly Dictionary<string, long> m_reservations = new();
 
     protected DataStream()
     {
@@ -52,6 +49,9 @@ public unsafe class DataStream : IDisposable
     public void CopyTo(Stream destination) => CopyTo(destination, (int)(Length - Position));
     /// <inheritdoc cref="Stream.CopyTo(Stream, int)"/>
     public virtual void CopyTo(Stream destination, int bufferSize) => m_stream.CopyTo(destination, bufferSize);
+
+    public void CopyTo(DataStream destination) => CopyTo(destination, (int)(Length - Position));
+    public virtual void CopyTo(DataStream destination, int bufferSize) => CopyTo((Stream)destination, bufferSize);
 
     /// <inheritdoc cref="Stream.SetLength"/>
     public void SetLength(int value) => m_stream.SetLength(value);
@@ -290,13 +290,6 @@ public unsafe class DataStream : IDisposable
         return new Guid(span);
     }
 
-    public Sha1 ReadSha1()
-    {
-        Span<byte> span = stackalloc byte[sizeof(Sha1)];
-        m_stream.ReadExactly(span);
-
-        return new Sha1(span.ToArray());
-    }
 
     #endregion
 
@@ -436,49 +429,6 @@ public unsafe class DataStream : IDisposable
         Write(buffer);
     }
 
-    private void Reserve(string name, string typeName, int length)
-    {
-        name = $"{name}:{typeName}";
-        if (m_reservations.ContainsKey(name))
-            throw new ArgumentException("Key already reserved: " + name);
-
-        m_reservations[name] = Position;
-        for (var i = 0; i < length; i++)
-        {
-            WriteByte(0xFE);
-        }
-    }
-
-    // ReserveUInt32
-
-
-    public void ReserveUInt32(string name)
-    {
-        Reserve(name, "UInt32", 4);
-    }
-
-    public void FillUInt32(string name, uint value)
-    {
-        StepIn(Fill(name, "UInt32"));
-        WriteUInt32(value);
-        StepOut();
-    }
-
-    private long Fill(string name, string typeName)
-    {
-        name = $"{name}:{typeName}";
-        if (!m_reservations.TryGetValue(name, out var jump))
-        { 
-            throw new ArgumentException("Key is not reserved: " + name);
-        }
-
-        m_reservations.Remove(name);
-        return jump;
-    }
-
-
-
-
     #endregion
 
     #region -- Strings --
@@ -531,14 +481,6 @@ public unsafe class DataStream : IDisposable
         Write(buffer);
     }
 
-    public void WriteSha1(Sha1 value)
-    {
-        Span<byte> buffer = stackalloc byte[sizeof(Sha1)];
-
-        buffer = value.ToByteArray();
-
-        Write(buffer);
-    }
 
     public void Write7BitEncodedInt32(int value)
     {
@@ -589,5 +531,16 @@ public unsafe class DataStream : IDisposable
     public virtual void Dispose()
     {
         m_stream.Dispose();
+    }
+
+    public virtual DataStream CreateSubStream(long inStartOffset, int inSize)
+    {
+        StepIn(inStartOffset);
+
+        DataStream retVal = new(new MemoryStream(ReadBytes(inSize)));
+
+        StepOut();
+
+        return retVal;
     }
 }

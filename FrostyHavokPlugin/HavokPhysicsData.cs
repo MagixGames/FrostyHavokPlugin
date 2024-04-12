@@ -13,6 +13,8 @@ namespace FrostyHavokPlugin;
 
 public class HavokPhysicsData
 {
+    public const float FrostbiteVersion = 2017f;
+
     public int PartCount { get; private set; }
     public List<Vector3> PartTranslations { get; private set; } = new();
     public List<Box3> LocalAabbs { get; private set; } = new();
@@ -22,11 +24,13 @@ public class HavokPhysicsData
     public byte MaterialCountUsed { get; private set; }
     public byte HighestMaterialIndex { get; private set; }
 
-    private Block<byte>? m_firstPackFile;
-    private HKXHeader? m_header;
-    private IHavokObject? m_obj;
+    public Block<byte>? m_firstPackFile;
+    public HKXHeader? m_header;
+    public IHavokObject? m_obj;
 
-    public override void Deserialize(DataStream inStream, ReadOnlySpan<byte> inResMeta)
+    public T GetObject<T>() where T : IHavokObject, new() => (T) m_obj!;
+
+    public void Deserialize(DataStream inStream, ReadOnlySpan<byte> inResMeta)
     {
         uint packFilesOffset = BinaryPrimitives.ReadUInt16LittleEndian(inResMeta.Slice(0, 2));
         uint firstPackFileSize = BinaryPrimitives.ReadUInt32LittleEndian(inResMeta.Slice(4, 4));
@@ -77,7 +81,7 @@ public class HavokPhysicsData
         });
 
         // TODO: check when they added this
-        if (ProfilesLibrary.FrostbiteVersion > "2016")
+        if (FrostbiteVersion > 2016)
         {
             count = inStream.ReadInt32();
             DetailResourceIndices.EnsureCapacity(count);
@@ -108,7 +112,10 @@ public class HavokPhysicsData
 
         m_obj = deserializer.Deserialize(inStream, (uint)(fixupTablesOffset + firstFixupTableSize));
         m_header = deserializer.Header;
+    }
 
+    public void WriteToOBJ(string filePath)
+    {
          hkRootLevelContainer? root = m_obj as hkRootLevelContainer;
 
          HavokPhysicsContainer? container = root!._namedVariants[0]._variant as HavokPhysicsContainer;
@@ -121,11 +128,10 @@ public class HavokPhysicsData
              shape.Export(writer, $"{current++}");
          }
 
-        writer.WriteToFile("/home/jona/havok.obj");
-
+        writer.WriteToFile(filePath);
     }
 
-    public override void Serialize(DataStream inStream, Span<byte> inResMeta)
+    public void Serialize(DataStream inStream, Span<byte> inResMeta)
     {
         // write frostbite stuff
         inStream.WriteInt32(PartCount);
@@ -139,7 +145,7 @@ public class HavokPhysicsData
         inStream.WriteInt32(MaterialFlagsAndIndices.Count);
         inStream.WriteRelocPtr(nameof(MaterialFlagsAndIndices));
 
-        if (ProfilesLibrary.FrostbiteVersion > "2016")
+        if (FrostbiteVersion > 2016)
         {
             inStream.WriteInt32(DetailResourceIndices.Count);
             inStream.WriteRelocPtr(nameof(DetailResourceIndices));
@@ -176,7 +182,7 @@ public class HavokPhysicsData
         }
         inStream.Pad(16);
 
-        if (ProfilesLibrary.FrostbiteVersion > "2016")
+        if (FrostbiteVersion > 2016)
         {
             inStream.AddRelocData(nameof(DetailResourceIndices));
             foreach (ushort index in DetailResourceIndices)
@@ -194,7 +200,7 @@ public class HavokPhysicsData
         BinaryPrimitives.WriteInt32LittleEndian(inResMeta.Slice(4, 4), m_firstPackFile!.Size);
 
         PackFileSerializer serializer = new();
-        using Block<byte> data = new(0);
+        using Block<byte> data = new(4096);
         using Block<byte> fixupTable = new(0);
         using (BlockStream fixupTableStream = new(fixupTable, true))
         using (BlockStream stream = new(data, true))
