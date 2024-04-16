@@ -28,7 +28,7 @@ public class HKXHeader
     public uint Unk4C;
     public int UserTag;
 
-    private HKXHeader()
+    public HKXHeader()
     {
     }
 

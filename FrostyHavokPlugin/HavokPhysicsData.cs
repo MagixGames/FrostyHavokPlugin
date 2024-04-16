@@ -13,16 +13,16 @@ namespace FrostyHavokPlugin;
 
 public class HavokPhysicsData
 {
-    public const float FrostbiteVersion = 2017f;
+    public const float FrostbiteVersion = 1002017;
 
-    public int PartCount { get; private set; }
-    public List<Vector3> PartTranslations { get; private set; } = new();
-    public List<Box3> LocalAabbs { get; private set; } = new();
-    public List<byte> MaterialIndices { get; private set; } = new();
-    public List<uint> MaterialFlagsAndIndices { get; private set; } = new();
-    public List<ushort> DetailResourceIndices { get; private set; } = new();
-    public byte MaterialCountUsed { get; private set; }
-    public byte HighestMaterialIndex { get; private set; }
+    public int PartCount { get; set; }
+    public List<Vector3> PartTranslations { get; set; } = new();
+    public List<Box3> LocalAabbs { get; set; } = new();
+    public List<byte> MaterialIndices { get; set; } = new();
+    public List<uint> MaterialFlagsAndIndices { get; set; } = new();
+    public List<ushort> DetailResourceIndices { get; set; } = new();
+    public byte MaterialCountUsed { get; set; }
+    public byte HighestMaterialIndex { get; set; }
 
     public Block<byte>? m_firstPackFile;
     public HKXHeader? m_header;
@@ -81,7 +81,7 @@ public class HavokPhysicsData
         });
 
         // TODO: check when they added this
-        if (FrostbiteVersion > 2016)
+        if (ProfilesLibrary.FrostbiteVersion > "2016")
         {
             count = inStream.ReadInt32();
             DetailResourceIndices.EnsureCapacity(count);
@@ -200,7 +200,7 @@ public class HavokPhysicsData
         BinaryPrimitives.WriteInt32LittleEndian(inResMeta.Slice(4, 4), m_firstPackFile!.Size);
 
         PackFileSerializer serializer = new();
-        using Block<byte> data = new(4096);
+        using Block<byte> data = new(0);
         using Block<byte> fixupTable = new(0);
         using (BlockStream fixupTableStream = new(fixupTable, true))
         using (BlockStream stream = new(data, true))

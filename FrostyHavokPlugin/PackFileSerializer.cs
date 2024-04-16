@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Frosty.Sdk.IO;
-using Frosty.Sdk.Utils;
 using FrostyHavokPlugin.CommonTypes;
 using FrostyHavokPlugin.Interfaces;
 using FrostyHavokPlugin.Utils;
