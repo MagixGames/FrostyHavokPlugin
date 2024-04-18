@@ -81,7 +81,7 @@ public class HavokPhysicsData
         });
 
         // TODO: check when they added this
-        if (ProfilesLibrary.FrostbiteVersion > "2016")
+        if (FrostbiteVersion > 2016)
         {
             count = inStream.ReadInt32();
             DetailResourceIndices.EnsureCapacity(count);
@@ -222,5 +222,12 @@ public class HavokPhysicsData
         // set packfile types
         inResMeta[2] = 0;
         inResMeta[3] = 1;
+    }
+
+    public void SerializeXML(string path)
+    {
+        XmlSerializer serializer = new();
+        using FileStream stream = File.Create(path);
+        serializer.Serialize(m_obj!, m_header!, stream);
     }
 }

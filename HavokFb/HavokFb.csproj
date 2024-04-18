@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<OutputType>Exe</OutputType>
+
+
+	  <StripSymbols>true</StripSymbols>
+
+
+	  <Configurations>Debug;Release;Release - Final</Configurations>
+
+
+	  <Platforms>AnyCPU;x64</Platforms>
+	  <!--<PublishAot>true</PublishAot>
+	  <PublishTrimmed>true</PublishTrimmed>
+	  <PublishSingleFile>true</PublishSingleFile>
+	  <IsAotCompatible>true</IsAotCompatible>
+	  <TrimMode>partial</TrimMode>-->
+  </PropertyGroup>
+
+
+	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Developer - Debug|x64' ">
+		<DebugSymbols>true</DebugSymbols>
+		<OutputPath>bin\Developer\Debug\</OutputPath>
+		<DefineConstants>DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release - Alpha|x64' ">
+		<OutputPath>bin\Release\Alpha\</OutputPath>
+		<DefineConstants>TRACE</DefineConstants>
+		<Optimize>true</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release - Beta|x64'">
+		<OutputPath>bin\Release\Beta\</OutputPath>
+		<DefineConstants>TRACE</DefineConstants>
+		<Optimize>true</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release - Final|x64'">
+		<OutputPath>bin\Release\Final\</OutputPath>
+		<DefineConstants>TRACE</DefineConstants>
+		<Optimize>true</Optimize>
+	</PropertyGroup>
+	
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="xcopy /Y $(TargetPath) $(SolutionDir)$(OutDir)Plugins\" />
+	</Target>
+	
+	<ItemGroup>
+	  <PackageReference Include="OpenTK.Mathematics" Version="4.8.2" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <ProjectReference Include="..\FrostyHavokPlugin\FrostyHavokPlugin\FrostyHavokPlugin\FrostyHavokPlugin.csproj" />
+	</ItemGroup>
+</Project>
