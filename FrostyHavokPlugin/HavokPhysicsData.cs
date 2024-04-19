@@ -5,6 +5,8 @@ using Frosty.Sdk.IO;
 using Frosty.Sdk.Utils;
 using FrostyHavokPlugin.CommonTypes;
 using FrostyHavokPlugin.Interfaces;
+using FrostyHavokPlugin.Utils;
+using hk;
 using OpenTK.Mathematics;
 
 namespace FrostyHavokPlugin;
@@ -22,19 +24,19 @@ public struct MaterialDecl
     public ushort Flags => (ushort)((Packed >> 4) & 0xFF);
 }
 
-public class HavokPhysicsData : Resource
+public class HavokPhysicsData
 {
-    public int PartCount { get; private set; }
-    public List<Vector3> PartTranslations { get; private set; } = new();
-    public List<Box3> LocalAabbs { get; private set; } = new();
-    public List<byte> MaterialIndices { get; private set; } = new(); // map PartIndex to MaterialIndex
-    public List<MaterialDecl> MaterialFlagsAndIndices { get; private set; } = new(); // map MaterialIndex to MaterialFlag(MaterialDecl) -> MaterialCount = MaterialFlagsAndIndices.Count - 1
-    public List<ushort> DetailResourceIndices { get; private set; } = new();
-    public byte MaterialCountUsed { get; private set; }
-    public byte HighestMaterialIndex { get; private set; }
 
-    private HKXHeader? m_header;
-    public IHavokObject? m_obj;
+    public static float FrostbiteVersion = 1002017;
+    public int PartCount { get; private set; }
+    public List<Vector3> PartTranslations { get; set; } = new();
+    public List<Box3> LocalAabbs { get; set; } = new();
+    public List<byte> MaterialIndices { get; set; } = new(); // map PartIndex to MaterialIndex
+    public List<MaterialDecl> MaterialFlagsAndIndices { get; set; } = new(); // map MaterialIndex to MaterialFlag(MaterialDecl) -> MaterialCount = MaterialFlagsAndIndices.Count - 1
+    public List<ushort> DetailResourceIndices { get; set; } = new();
+    public byte MaterialCountUsed { get; set; }
+    public byte HighestMaterialIndex { get; set; }
+
 
     public Block<byte>? m_firstPackFile;
     public HKXHeader? m_header;
