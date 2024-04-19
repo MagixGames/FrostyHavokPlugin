@@ -1,28 +1,40 @@
 using System.Buffers.Binary;
+using System.Diagnostics;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Utils;
 using FrostyHavokPlugin.CommonTypes;
-using FrostyHavokPlugin.HavokExtensions;
 using FrostyHavokPlugin.Interfaces;
-using FrostyHavokPlugin.Utils;
-using hk;
 using OpenTK.Mathematics;
 
 namespace FrostyHavokPlugin;
 
-public class HavokPhysicsData
+public struct MaterialDecl
 {
-    public const float FrostbiteVersion = 1002017;
+    public uint Packed;
 
-    public int PartCount { get; set; }
-    public List<Vector3> PartTranslations { get; set; } = new();
-    public List<Box3> LocalAabbs { get; set; } = new();
-    public List<byte> MaterialIndices { get; set; } = new();
-    public List<uint> MaterialFlagsAndIndices { get; set; } = new();
-    public List<ushort> DetailResourceIndices { get; set; } = new();
-    public byte MaterialCountUsed { get; set; }
-    public byte HighestMaterialIndex { get; set; }
+    public static implicit operator uint(MaterialDecl value) => value.Packed;
+
+    public static implicit operator MaterialDecl(uint value) => new() { Packed = value };
+
+    public ushort PhysicsPropertyIndex => (ushort)((Packed >> 20) & 0xFF);
+    public ushort PhysicsMaterialIndex => (ushort)((Packed >> 12) & 0xFF);
+    public ushort Flags => (ushort)((Packed >> 4) & 0xFF);
+}
+
+public class HavokPhysicsData : Resource
+{
+    public int PartCount { get; private set; }
+    public List<Vector3> PartTranslations { get; private set; } = new();
+    public List<Box3> LocalAabbs { get; private set; } = new();
+    public List<byte> MaterialIndices { get; private set; } = new(); // map PartIndex to MaterialIndex
+    public List<MaterialDecl> MaterialFlagsAndIndices { get; private set; } = new(); // map MaterialIndex to MaterialFlag(MaterialDecl) -> MaterialCount = MaterialFlagsAndIndices.Count - 1
+    public List<ushort> DetailResourceIndices { get; private set; } = new();
+    public byte MaterialCountUsed { get; private set; }
+    public byte HighestMaterialIndex { get; private set; }
+
+    private HKXHeader? m_header;
+    public IHavokObject? m_obj;
 
     public Block<byte>? m_firstPackFile;
     public HKXHeader? m_header;
@@ -74,9 +86,18 @@ public class HavokPhysicsData
         MaterialFlagsAndIndices.EnsureCapacity(count);
         inStream.ReadRelocPtr(stream =>
         {
+            uint flags = 0;
             for (int i = 0; i < count; i++)
             {
                 MaterialFlagsAndIndices.Add(stream.ReadUInt32());
+                if (i != count - 1)
+                {
+                    flags |= MaterialFlagsAndIndices.Last().Flags;
+                }
+                else
+                {
+                    Debug.Assert(flags == MaterialFlagsAndIndices.Last().Flags);
+                }
             }
         });
 
@@ -104,9 +125,7 @@ public class HavokPhysicsData
 
         // reloc table after fixup table
 
-        inStream.Position = packFilesOffset;
-        m_firstPackFile = new Block<byte>((int)firstPackFileSize);
-        inStream.ReadExactly(m_firstPackFile);
+        inStream.Position = packFilesOffset + firstPackFileSize;
 
         PackFileDeserializer deserializer = new();
 
@@ -117,6 +136,7 @@ public class HavokPhysicsData
     public void WriteToOBJ(string filePath)
     {
          hkRootLevelContainer? root = m_obj as hkRootLevelContainer;
+         /*hkRootLevelContainer? root = m_obj as hkRootLevelContainer;
 
          HavokPhysicsContainer? container = root!._namedVariants[0]._variant as HavokPhysicsContainer;
 
@@ -129,6 +149,14 @@ public class HavokPhysicsData
          }
 
         writer.WriteToFile(filePath);
+         current = 0;
+         foreach (Box3 aabb in LocalAabbs)
+         {
+             aabb.CreateAabb($"localaabb-{current++}", writer);
+         }
+
+        writer.WriteToFile("/home/jona/havok.obj");*/
+
     }
 
     public void Serialize(DataStream inStream, Span<byte> inResMeta)
@@ -195,10 +223,6 @@ public class HavokPhysicsData
         // write packfilesOffset to meta
         BinaryPrimitives.WriteUInt16LittleEndian(inResMeta.Slice(0, 2), (ushort)inStream.Position);
 
-        // we are just copying the 32 bit pack file
-        inStream.Write(m_firstPackFile!);
-        BinaryPrimitives.WriteInt32LittleEndian(inResMeta.Slice(4, 4), m_firstPackFile!.Size);
-
         PackFileSerializer serializer = new();
         using Block<byte> data = new(0);
         using Block<byte> fixupTable = new(0);
@@ -208,19 +232,24 @@ public class HavokPhysicsData
             serializer.Serialize(m_obj!, stream, fixupTableStream, m_header!);
         }
 
+        // we are just writing the 64 bit one twice
+        inStream.Write(data);
+        BinaryPrimitives.WriteInt32LittleEndian(inResMeta.Slice(4, 4), data.Size);
+
         inStream.Write(data);
         BinaryPrimitives.WriteInt32LittleEndian(inResMeta.Slice(8, 4), data.Size);
 
         long fixupOffset = inStream.Position;
-        inStream.WriteInt32(0);
         inStream.WriteInt32(fixupTable.Size);
+        inStream.WriteInt32(fixupTable.Size);
+        inStream.Write(fixupTable);
         inStream.Write(fixupTable);
 
         inStream.WriteRelocTable();
         BinaryPrimitives.WriteUInt32LittleEndian(inResMeta.Slice(12, 4), (uint)(inStream.Position - fixupOffset));
 
         // set packfile types
-        inResMeta[2] = 0;
+        inResMeta[2] = 1;
         inResMeta[3] = 1;
     }
 
