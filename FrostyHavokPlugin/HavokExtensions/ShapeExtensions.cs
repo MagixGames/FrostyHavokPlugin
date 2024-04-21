@@ -101,6 +101,28 @@ public static class ShapeExtensions
         }
     }
 
+    public static hkcdStaticTreeCodec3Axis6 BuildAABBTreeNode(Box3 aabb)
+    {
+        hkcdStaticTreeCodec3Axis6 node = new hkcdStaticTreeCodec3Axis6();
+        node._hiData = 0;
+        node._loData = 0;
+        node._xyz = [0, 0, 0]; // always 3
+        Vector3 constant = new(266, 226, 226);
+        Vector3 scale = aabb.Max - aabb.Min;
+        scale *= constant;
+
+        // this part is pretty much encoding the max and min into just 3 bytes
+        // which is fucking insane
+
+        //Box3 newAabb = aabb;
+        //newAabb.Min -=
+        int index = 0;
+
+
+
+        return node;
+    }
+
     public static void CreateAabb(this Box3 aabb, string name, ObjWriter builder)
     {
         builder.WriteObject(name);

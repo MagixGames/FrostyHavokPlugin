@@ -4,6 +4,7 @@ using Frosty.Sdk;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Utils;
 using FrostyHavokPlugin.CommonTypes;
+using FrostyHavokPlugin.HavokExtensions;
 using FrostyHavokPlugin.Interfaces;
 using FrostyHavokPlugin.Utils;
 using hk;
@@ -28,7 +29,7 @@ public class HavokPhysicsData
 {
 
     public static float FrostbiteVersion = 1002017;
-    public int PartCount { get; private set; }
+    public int PartCount { get; set; }
     public List<Vector3> PartTranslations { get; set; } = new();
     public List<Box3> LocalAabbs { get; set; } = new();
     public List<byte> MaterialIndices { get; set; } = new(); // map PartIndex to MaterialIndex
@@ -137,27 +138,24 @@ public class HavokPhysicsData
 
     public void WriteToOBJ(string filePath)
     {
-         hkRootLevelContainer? root = m_obj as hkRootLevelContainer;
-         /*hkRootLevelContainer? root = m_obj as hkRootLevelContainer;
+        //hkRootLevelContainer? root = m_obj as hkRootLevelContainer;
+        hkRootLevelContainer? root = m_obj as hkRootLevelContainer;
 
-         HavokPhysicsContainer? container = root!._namedVariants[0]._variant as HavokPhysicsContainer;
+        HavokPhysicsContainer? container = root!._namedVariants[0]._variant as HavokPhysicsContainer;
 
-         int current = 0;
+        int current = 0;
 
-         ObjWriter writer = new();
-         foreach (hknpShape shape in container!._shapes)
-         {
-             shape.Export(writer, $"{current++}");
-         }
+        ObjWriter writer = new();
+        foreach (hknpShape shape in container!._shapes)
+        {
+            shape.Export(writer, $"{current++}");
+        }
 
+        foreach (Box3 aabb in LocalAabbs)
+        {
+            aabb.CreateAabb($"localaabb-{current++}", writer);
+        }
         writer.WriteToFile(filePath);
-         current = 0;
-         foreach (Box3 aabb in LocalAabbs)
-         {
-             aabb.CreateAabb($"localaabb-{current++}", writer);
-         }
-
-        writer.WriteToFile("/home/jona/havok.obj");*/
 
     }
 
