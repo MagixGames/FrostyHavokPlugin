@@ -15,4 +15,5 @@ public enum hknpShape_FlagsEnum : uint
     NO_GET_ALL_SHAPE_KEYS_ON_SPU = 512,
     SHAPE_NOT_SUPPORTED_ON_SPU = 1024,
     CONTAINS_ONLY_TRIANGLES = 2048,
+    UNK1_NEG_SCALE_X = 4096,
 }

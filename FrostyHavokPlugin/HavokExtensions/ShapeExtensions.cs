@@ -24,7 +24,7 @@ public static class ShapeExtensions
                 }
 
                 compoundShape.ExportAabbs(builder, name);
-                compoundShape.ComputeAabbTree();
+                //compoundShape.ComputeAabbTree();
 
                 break;
             }
@@ -131,7 +131,8 @@ public static class ShapeExtensions
             domain.Extend(aabb.Min);
             domain.Extend(aabb.Max);
         }
-
+        shape._boundingVolumeData = new hknpStaticCompoundShapeData();
+        shape._boundingVolumeData._aabbTree = new hknpStaticCompoundShapeTree();
         shape._boundingVolumeData._aabbTree._domain = new hkAabb { _max = new(domain.Max), _min = new(domain.Min) };
         shape._boundingVolumeData._aabbTree._nodes.Clear();
 
@@ -142,11 +143,10 @@ public static class ShapeExtensions
 
         Box3 parentAabb = domain, originalAabb = aabbs[index];
 
-
         for (int i = 0; i < count; i++)
         {
             bool isLeaf = true;
-            int data = 0; // TODO:
+            int data = i; // TODO:
             hkcdStaticTreeCodec3Axis6 codec = new();
             parentAabb = Pack(codec, data, isLeaf, parentAabb, originalAabb);
             shape._boundingVolumeData._aabbTree._nodes.Add(codec);
